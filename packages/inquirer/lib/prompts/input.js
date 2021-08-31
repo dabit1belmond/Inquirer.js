@@ -1,39 +1,38 @@
+
 'use strict';
 /**
  * `input` type prompt
  */
 
-const chalk = require('chalk');
-const { map, takeUntil } = require('rxjs/operators');
-const Base = require('./base');
-const observe = require('../utils/events');
+var chalk = require('chalk');
+var { takeUntil } = require('rxjs/operators');
+var Base = require('./base');
+var observe = require('../utils/events');
 
 class InputPrompt extends Base {
+  constructor(question, rl, answers) {
+    super(question, rl, answers)
+
+    this.default = this.opt.default;
+    // Never render the default in multiline mode.
+    if (this.opt.multiline) {
+      this.opt.default = undefined;
+    }
+  }
   /**
    * Start the Inquiry session
-   * @param  {Function} cb      Callback when prompt is done
    * @return {this}
    */
 
-  _run(cb) {
-    this.done = cb;
-
-    // Once user confirm (enter key)
-    const events = observe(this.rl);
-    const submit = events.line.pipe(map(this.filterInput.bind(this)));
-
-    const validation = this.handleSubmitEvents(submit);
-    validation.success.forEach(this.onEnd.bind(this));
-    validation.error.forEach(this.onError.bind(this));
+  _run() {
+    // By default, the enter key submits the input.
+    // In multiline mode, an empty line submits.
+    var events = observe(this.rl);
+    var validation = this.submit(events.line);
 
     events.keypress
       .pipe(takeUntil(validation.success))
       .forEach(this.onKeypress.bind(this));
-
-    // Init
-    this.render();
-
-    return this;
   }
 
   /**
@@ -42,29 +41,24 @@ class InputPrompt extends Base {
    */
 
   render(error) {
-    let bottomContent = '';
-    let appendContent = '';
-    let message = this.getQuestion();
-    const { transformer } = this.opt;
-    const isFinal = this.status === 'answered';
-
-    if (isFinal) {
-      appendContent = this.answer;
+    var input;
+    var isFinal = this.status === 'answered';
+    if (this.opt.multiline) {
+      input = '\n' + (this.answer ? this.answer + '\n' : '') + this.rl.line;
     } else {
-      appendContent = this.rl.line;
-    }
+      input = isFinal ? this.answer : this.rl.line;
 
-    if (transformer) {
-      message += transformer(appendContent, this.answers, { isFinal });
-    } else {
-      message += isFinal ? chalk.cyan(appendContent) : appendContent;
+      var transformer = this.opt.transformer;
+      if (transformer) {
+        input = transformer(input, this.answers, { isFinal });
+      } else if (isFinal) {
+        input = chalk.cyan(input);
+      }
     }
-
-    if (error) {
-      bottomContent = chalk.red('>> ') + error;
-    }
-
-    this.screen.render(message, bottomContent);
+    this.screen.render(
+      this.getQuestion() + input,
+      error ? chalk.red('>> ') + error : '',
+    );
   }
 
   /**
@@ -72,28 +66,24 @@ class InputPrompt extends Base {
    */
 
   filterInput(input) {
-    if (!input) {
-      return this.opt.default == null ? '' : this.opt.default;
-    }
-
-    return input;
+    return input || (this.default == null ? '' : this.default);
   }
 
   onEnd(state) {
-    this.answer = state.value;
-    this.status = 'answered';
+    if (this.opt.multiline && state.value) {
+      // Append each line to the previous lines.
+      this.answer = (this.answer ? this.answer + '\n' : '') + state.value;
+      this.render();
 
-    // Re-render prompt
-    this.render();
+      // Ask for the next line.
+      return this._run();
+    }
 
-    this.screen.done();
-    this.done(state.value);
+    this.useAnswer((this.answer || '') + state.value);
   }
 
-  onError({ value = '', isValid }) {
-    this.rl.line += value;
-    this.rl.cursor += value.length;
-    this.render(isValid);
+  onError(state) {
+    this.render(state.isValid);
   }
 
   /**
@@ -101,9 +91,19 @@ class InputPrompt extends Base {
    */
 
   onKeypress() {
-    this.state = 'touched';
-
     this.render();
+  }
+
+  useAnswer(answer) {
+    this.answer = this.filterInput(answer);
+    super.onEnd();
+    this.screen.done();
+    if (this.opt.multiline) {
+      this.done(this.answer ? this.answer.split('\n') : []);
+      this.abortSubscription.unsubscribe();
+    } else {
+      this.done(this.answer);
+    }
   }
 }
 
