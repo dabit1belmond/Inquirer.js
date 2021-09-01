@@ -1,50 +1,55 @@
 {
-  "private": true,
-  "devDependencies": {
-    "@babel/core": "^7.14.3",
-    "@babel/preset-env": "^7.14.2",
-    "babel-jest": "^27.0.6",
-    "codecov": "^3.8.2",
-    "eslint": "^7.26.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-config-xo": "^0.37.0",
-    "eslint-plugin-prettier": "^3.4.0",
-    "husky": "^7.0.1",
-    "jest": "^27.0.6",
-    "lerna": "^4.0.0",
-    "lint-staged": "^11.0.0",
-    "prettier": "^2.3.0"
-  },
-  "workspaces": [
-    "packages/*"
+  "name": "inquirer",
+  "version": "8.1.2",
+  "description": "A collection of common interactive command line user interfaces.",
+  "author": "Simon Boudrias <admin@simonboudrias.com>",
+  "files": [
+    "lib",
+    "README.md"
   ],
+  "main": "lib/inquirer.js",
+  "keywords": [
+    "command",
+    "prompt",
+    "stdin",
+    "cli",
+    "tty",
+    "menu"
+  ],
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "chalk-pipe": "^5.1.1",
+    "cmdify": "^0.0.4",
+    "mocha": "^9.0.2",
+    "mockery": "^2.1.0",
+    "nyc": "^15.0.0",
+    "sinon": "^11.1.1"
+  },
   "scripts": {
-    "bootstrap": "lerna bootstrap --no-ci",
-    "pretest": "eslint .",
-    "test": "jest --coverage && lerna exec npm test --scope inquirer"
+    "test": "nyc mocha test/**/* -r ./test/before",
+    "posttest": "nyc report --reporter=text-lcov > ../../coverage/nyc-report.lcov",
+    "prepublishOnly": "cp ../../README.md .",
+    "postpublish": "rm -f README.md"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SBoudrias/Inquirer.js.git"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.json": [
-      "prettier --write",
-      "git add"
-    ],
-    "*.js": [
-      "eslint --fix",
-      "git add"
-    ]
-  },
-  "jest": {
-    "coverageDirectory": "./coverage/",
-    "collectCoverage": true
-  },
-  "dependencies": {}
+  "repository": "SBoudrias/Inquirer.js",
+  "license": "MIT",
+  "dependencies": {
+    "ansi-escapes": "^4.2.1",
+    "chalk": "^4.1.1",
+    "cli-cursor": "^3.1.0",
+    "cli-width": "^3.0.0",
+    "external-editor": "^3.0.3",
+    "figures": "^3.0.0",
+    "lodash": "^4.17.21",
+    "mute-stream": "0.0.8",
+    "ora": "^5.3.0",
+    "run-async": "^2.4.0",
+    "rxjs": "^7.2.0",
+    "string-width": "^4.1.0",
+    "strip-ansi": "^6.0.0",
+    "through": "^2.3.6"
+  }
 }
